@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONKEY</title>
+    <style>
+        /* ------------------- COLORES DEL TEMA OSCURO ------------------- */
+    
+        /* Fondo general (Body) y texto principal */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1c1c1c; /* Fondo muy oscuro */
+            color: #f0f0f0; /* Texto principal color claro */
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Estilo para encabezados y enlaces */
+        h1 {
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #e0e0e0;
+            margin-bottom: 30px;
+        }
+
+        /* Enlace "Volver a votar" */
+        a {
+            color: #4CAF50; /* Un verde vibrante para contraste */
+            text-decoration: none;
+        }
+
+        /* Estilos para la tabla de ranking */
+        table {
+            width: 80%;
+            max-width: 800px; /* Limitar el ancho máximo para legibilidad */
+            margin: 30px auto;
+            border-collapse: collapse;
+            background-color: #333333; /* Fondo de la tabla */
+            color: #f0f0f0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); /* Sombra para resaltar la tabla */
+            border-radius: 8px;
+            overflow: hidden; /* Para que el borde redondeado funcione con la tabla */
+        }
+        
+        th, td {
+            border: 1px solid #555555; /* Borde más oscuro */
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #4CAF50; /* Color de encabezado de tabla (Verde) */
+            color: white;
+            text-transform: uppercase;
+        }
+
+        /* Resaltar las filas impares para mejor legibilidad */
+        tr:nth-child(even) {
+            background-color: #3a3a3a;
+        }
+        
+        /* Media query para dispositivos móviles */
+        @media (max-width: 600px) {
+            table {
+                width: 95%;
+                font-size: 0.8em;
+            }
+            th, td {
+                padding: 8px;
+            }
+        }
+        /* ------------------- FIN TEMA OSCURO ------------------- */
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>RANKING MONKEYSMASH</h1>
+        <p><a href="{{ url_for('index') }}">Volver a votar</a></p>
+    </div>
+
+    <h2>Las 48 personas ordenadas por puntuación.</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>N°</th>
+                <th>Nombre</th>
+                <th>Puntuación</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for persona in personas %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ persona.nombre }}</td>
+                <td>{{ persona.elo_score }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# .gitignore
+
+# Entorno Virtual
+venv/
+
+# Archivo de la base de datos local
+facemash.db
+
+# Carpeta de cache de Python
+__pycache__/
+
+# Carpeta que a veces crea Flask para la BD
+instance/

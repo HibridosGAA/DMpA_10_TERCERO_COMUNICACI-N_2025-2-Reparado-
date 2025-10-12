@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONKEY</title>
+    <style>
+        /* ------------------- COLORES DEL TEMA OSCURO ------------------- */
+        
+        /* Fondo general (Body) y texto principal */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1c1c1c; /* Fondo muy oscuro */
+            color: #f0f0f0; /* Texto principal color claro */
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Estilo para encabezados y enlaces */
+        h1 {
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #e0e0e0;
+            margin-bottom: 30px;
+        }
+
+        /* Enlace "Ver Ranking" */
+        a {
+            color: #4CAF50; /* Un verde vibrante para contraste */
+            text-decoration: none;
+        }
+
+        /* Área de votación */
+        .voting-area {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 50px;
+        }
+
+        /* Tarjetas de las personas (Card) */
+        .card {
+            background-color: #333333; /* Fondo oscuro de la tarjeta */
+            border: 2px solid #555555; /* Borde de la tarjeta */
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); /* Sombra más pronunciada */
+            transition: transform 0.2s;
+            cursor: pointer;
+            width: 250px;
+            color: #f0f0f0;
+        }
+        
+        /* Efecto al pasar el ratón */
+        .card:hover {
+            transform: scale(1.03);
+            background-color: #444444; /* Ligero cambio de color al pasar el ratón */
+        }
+
+        /* Imágenes */
+        .card img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            /* Aseguramos que el fondo de la imagen de reemplazo también sea oscuro si no tienes las fotos */
+            background-color: #555555; 
+            display: block;
+            object-fit: cover; /* Para asegurar que la imagen cubra el área */
+        }
+        
+        .name {
+            margin-top: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        /* Media query para dispositivos móviles */
+        @media (max-width: 600px) {
+            .voting-area {
+                flex-direction: column;
+                gap: 20px;
+                margin-top: 20px;
+            }
+            .card {
+                width: 80%;
+                margin: 0 auto;
+            }
+        }
+
+        /* ------------------- FIN TEMA OSCURO ------------------- */
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MONKEYSMASH</h1> 
+        <p><a href="{{ url_for('ranking') }}">Ver Ranking</a></p>
+    </div>
+
+    <h2>¿Quién es más atractiva? Haz clic en tu favorita.</h2> 
+    
+    <div class="voting-area">
+        
+        <form method="POST" action="{{ url_for('vote') }}">
+            <input type="hidden" name="ganador_id" value="{{ persona_a.id }}">
+            <input type="hidden" name="perdedor_id" value="{{ persona_b.id }}">
+            <div class="card" onclick="this.closest('form').submit()">
+                <img src="{{ url_for('static', filename=persona_a.imagen_url) }}" alt="Foto de {{ persona_a.nombre }}">
+                <div class="name">{{ persona_a.nombre }}</div>
+            </div>
+        </form>
+
+        <div class="separator">
+            <p style="font-size: 2em; margin: 0;">O</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('vote') }}">
+            <input type="hidden" name="ganador_id" value="{{ persona_b.id }}">
+            <input type="hidden" name="perdedor_id" value="{{ persona_a.id }}">
+            <div class="card" onclick="this.closest('form').submit()">
+                <img src="{{ url_for('static', filename=persona_b.imagen_url) }}" alt="Foto de {{ persona_b.nombre }}">
+                <div class="name">{{ persona_b.nombre }}</div>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>
