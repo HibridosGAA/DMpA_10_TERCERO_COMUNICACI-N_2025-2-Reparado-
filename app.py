@@ -8,6 +8,11 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc 
 from whitenoise import WhiteNoise 
 
+# --- CONFIGURACIÓN DE SEGURIDAD ---
+# La clave de acceso para votar está directamente aquí. (NO RECOMENDADO EN PRODUCCIÓN)
+FIXED_ACCESS_CODE = "supermonkeysmash2025" 
+# ----------------------------------
+
 # Configuración de la aplicación
 app = Flask(__name__)
 # Usamos 'session' para guardar el estado de login, por eso necesitamos la SECRET_KEY
@@ -63,15 +68,14 @@ def actualizar_elo(ganador, perdedor):
 
 # --- Rutas y Lógica de la Aplicación ---
 
-# NUEVA RUTA DE LOGIN
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Obtiene el código de acceso seguro de las variables de entorno
-    ACCESS_CODE = os.environ.get('ACCESS_CODE', '1234') # '1234' es un fallback local
-
+    """Maneja el inicio de sesión con una clave fija."""
     if request.method == 'POST':
         submitted_code = request.form.get('code')
-        if submitted_code == ACCESS_CODE:
+        
+        # --- VERIFICACIÓN DE CONTRASEÑA UTILIZANDO LA CONSTANTE EN EL CÓDIGO ---
+        if submitted_code == FIXED_ACCESS_CODE:
             # Si el código es correcto, marca la sesión como autenticada
             session['logged_in'] = True
             flash("Acceso exitoso. ¡A votar!")
