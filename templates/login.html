@@ -1,71 +1,55 @@
-<!-- login.html: Pantalla de inicio de sesión con clave -->
+<!-- login.html: Pantalla de acceso con contraseña fija -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecretPass | Acceso</title>
-    <!-- Carga de Tailwind CSS para estilos modernos -->
+    <title>SecretPass | Acceso Privado</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0d1117; /* Fondo oscuro tipo GitHub */
+            background-color: #0d1117;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-sm p-8 bg-gray-800 rounded-xl shadow-2xl">
-        <h1 class="text-4xl font-bold text-center text-green-400 mb-2">SecretPass</h1>
-        <p class="text-center text-sm text-gray-400 mb-8">El muro de susurros anónimos.</p>
+<body>
+    <div class="w-full max-w-sm p-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+        <h1 class="text-3xl font-bold text-center text-green-400 mb-2">SecretPass</h1>
+        <p class="text-center text-gray-400 mb-6">Acceso al Muro de Debate Privado</p>
+        
+        <!-- INICIO DE LA MODIFICACIÓN: Bloque para mostrar errores -->
+        {% if error %}
+            <div class="bg-red-800 p-3 rounded-lg text-white text-sm text-center mb-4 border border-red-600 shadow-md">
+                {{ error }}
+            </div>
+        {% endif %}
+        <!-- FIN DE LA MODIFICACIÓN -->
 
-        <form id="loginForm" class="space-y-6">
-            <div>
-                <label for="passkey" class="block text-sm font-medium text-gray-300">Código de Acceso (Sala)</label>
-                <input
-                    type="text"
-                    id="passkey"
+        <form method="POST" action="/">
+            <div class="mb-4">
+                <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Contraseña</label>
+                <input 
+                    type="password" 
+                    id="password"
+                    name="password" 
+                    placeholder="Introduce la contraseña secreta"
                     required
-                    placeholder="Introduce la clave de la sala"
-                    class="mt-1 block w-full px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-150"
+                    class="w-full px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-150"
                 >
             </div>
+            
             <button
                 type="submit"
-                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-gray-900 bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150"
+                class="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-gray-900 bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150"
             >
-                Acceder al Chat
+                Entrar
             </button>
         </form>
-        <p id="error-message" class="mt-4 text-center text-sm text-red-400 hidden">
-            Clave inválida o error de acceso.
-        </p>
     </div>
-
-    <!-- Script para redireccionar a la sala de chat -->
-    <script>
-        const loginForm = document.getElementById('loginForm');
-        
-        // Define una clave de ejemplo para propósitos de demostración.
-        // En una aplicación real, no usarías una clave dura.
-        const DEFAULT_KEY = "SECRETO"; 
-
-        loginForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            const passkeyInput = document.getElementById('passkey');
-            const passkey = passkeyInput.value.trim();
-            const errorMessage = document.getElementById('error-message');
-
-            if (passkey.length > 0) {
-                // Redirige a la página de chat, pasando la clave como parámetro de URL.
-                // Esto es lo que usaremos en chat.html para determinar la ruta de Firestore.
-                // Usamos hash '#' para evitar que el servidor lo procese.
-                window.location.href = `/chat?room=${encodeURIComponent(passkey.toUpperCase())}`;
-            } else {
-                errorMessage.textContent = "Por favor, introduce una clave de acceso.";
-                errorMessage.classList.remove('hidden');
-            }
-        });
-    </script>
 </body>
 </html>
