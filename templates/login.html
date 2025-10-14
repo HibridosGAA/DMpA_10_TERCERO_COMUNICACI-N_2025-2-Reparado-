@@ -15,7 +15,6 @@
             </h1>
             <p class="text-center text-sm text-gray-500 mb-6">Se requiere autenticación para votar.</p>
 
-            <!-- Mensajes Flash (éxito o error) -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div class="mb-4">
@@ -38,12 +37,7 @@
                     Acceder
                 </button>
             </form>
-
-            <div class="mt-6 text-center">
-                 <a href="{{ url_for('ranking', genero='M') }}" class="text-sm text-indigo-600 hover:text-indigo-800 transition duration-300 font-medium">Ver Ranking (Acceso Público)</a>
             </div>
-            
-        </div>
     </div>
 </body>
 </html>
