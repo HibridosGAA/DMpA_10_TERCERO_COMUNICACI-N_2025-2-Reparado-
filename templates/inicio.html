@@ -3,86 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MonkeySmash - Elige tu Categoría</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-        .container {
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 90%;
-        }
-        h1 {
-            color: #4CAF50;
-            margin-bottom: 20px;
-            font-size: 2em;
-        }
-        .choice-button {
-            display: block;
-            width: 100%;
-            padding: 15px 20px;
-            margin: 15px 0;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
-            text-decoration: none; /* Para que parezca un botón aunque sea un enlace */
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }
-        .choice-button:hover {
-            transform: translateY(-2px);
-        }
-        #btn-hombres {
-            background-color: #007bff; /* Azul */
-        }
-        #btn-hombres:hover {
-            background-color: #0056b3;
-        }
-        #btn-mujeres {
-            background-color: #e83e8c; /* Rosa */
-        }
-        #btn-mujeres:hover {
-            background-color: #c71e6c;
-        }
-        .footer {
-            margin-top: 20px;
-            font-size: 0.9em;
-            color: #999;
-        }
-    </style>
+    <title>MonkeySmash - Elige Categoría</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
 </head>
-<body>
-    <div class="container">
-        <h1>MonkeySmash</h1>
-        <p>¡Bienvenido/a! Elige la categoría que deseas votar:</p>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
-        <a href="{{ url_for('index', genero='H') }}" class="choice-button" id="btn-hombres">
-            VOTAR HOMBRES
-        </a>
+    <div class="w-full max-w-lg">
+        <div class="bg-white shadow-2xl rounded-xl p-10">
+            <h1 class="text-4xl font-extrabold text-center mb-6 text-gray-800">
+                Monkey<span class="text-green-600">Smash</span>
+            </h1>
+            <p class="text-center text-xl text-gray-600 mb-8">¡Bienvenido! Elige la categoría que deseas votar:</p>
 
-        <a href="{{ url_for('index', genero='M') }}" class="choice-button" id="btn-mujeres">
-            VOTAR MUJERES
-        </a>
-    </div>
-    <div class="footer">
-        Presiona "Ranking" en la página de votación para ver las estadísticas.
+            <div class="space-y-4">
+                <a href="{{ url_for('index', genero='H') }}" class="block w-full text-center py-4 bg-blue-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-[1.01]">
+                    VOTAR HOMBRES
+                </a>
+                <a href="{{ url_for('index', genero='M') }}" class="block w-full text-center py-4 bg-pink-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-pink-700 transition duration-300 transform hover:scale-[1.01]">
+                    VOTAR MUJERES
+                </a>
+            </div>
+
+            <div class="mt-8 text-center space-y-3">
+                <p class="text-md text-gray-600">Presiona "Ranking" para ver las estadísticas.</p>
+                <a href="{{ url_for('ranking', genero='M') }}" class="text-lg text-indigo-600 hover:text-indigo-800 transition duration-300 font-medium mr-4">Ver Ranking</a>
+                
+                <!-- Botón de Logout (solo se muestra si el usuario está logeado) -->
+                {% if session.get('logged_in') %}
+                    <a href="{{ url_for('logout') }}" class="text-lg text-red-600 hover:text-red-800 transition duration-300 font-medium">Cerrar Sesión</a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </body>
 </html>

@@ -3,13 +3,14 @@ import random
 import os
 import click 
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import desc # Importación clave para el ordenamiento en ranking
+from sqlalchemy import desc 
 from whitenoise import WhiteNoise 
 
 # Configuración de la aplicación
 app = Flask(__name__)
+# Usamos 'session' para guardar el estado de login, por eso necesitamos la SECRET_KEY
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_de_emergencia')
 
 # --- CONFIGURACIÓN DE BASE DE DATOS PARA RENDER (POSTGRESQL) ---
@@ -62,14 +63,40 @@ def actualizar_elo(ganador, perdedor):
 
 # --- Rutas y Lógica de la Aplicación ---
 
+# NUEVA RUTA DE LOGIN
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # Obtiene el código de acceso seguro de las variables de entorno
+    ACCESS_CODE = os.environ.get('ACCESS_CODE', '1234') # '1234' es un fallback local
+
+    if request.method == 'POST':
+        submitted_code = request.form.get('code')
+        if submitted_code == ACCESS_CODE:
+            # Si el código es correcto, marca la sesión como autenticada
+            session['logged_in'] = True
+            flash("Acceso exitoso. ¡A votar!")
+            return redirect(url_for('elegir_categoria'))
+        else:
+            flash("Código de acceso incorrecto.", 'error')
+            
+    return render_template('login.html')
+
 @app.route('/')
 def elegir_categoria():
     """Ruta inicial que permite al usuario elegir entre Hombres y Mujeres."""
+    # REDIRECCIONAR si el usuario no ha iniciado sesión
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
     return render_template('inicio.html') 
 
 @app.route('/vote/<genero>')
 def index(genero):
     """Ruta para votar. Filtra por el género seleccionado ('H' o 'M')."""
+    # REDIRECCIONAR si el usuario no ha iniciado sesión
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
     if genero not in ['H', 'M']:
         return redirect(url_for('elegir_categoria'))
 
@@ -85,6 +112,10 @@ def index(genero):
 @app.route('/vote', methods=['POST'])
 def vote():
     """Procesa el voto y redirige al voto de la misma categoría."""
+    # REDIRECCIONAR si el usuario no ha iniciado sesión
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
     ganador_id = request.form.get('ganador_id')
     perdedor_id = request.form.get('perdedor_id')
     genero = request.form.get('genero') 
@@ -101,20 +132,28 @@ def vote():
 @app.route('/ranking/<genero>')
 def ranking(genero):
     """Muestra el ranking filtrado por el género seleccionado."""
+    # El ranking NO requiere login
     if genero not in ['H', 'M']:
         return redirect(url_for('elegir_categoria'))
 
-    # Esta línea ahora debe funcionar con PostgreSQL gracias a la importación de 'desc'
     top_personas = Persona.query.filter_by(genero=genero).order_by(desc(Persona.elo_score)).all()
     
     titulo = "Hombres" if genero == 'H' else "Mujeres"
     return render_template('ranking.html', personas=top_personas, genero=genero, titulo=titulo)
 
+@app.route('/logout')
+def logout():
+    """Cierra la sesión y redirige al login."""
+    session.pop('logged_in', None)
+    flash("Sesión cerrada correctamente.")
+    return redirect(url_for('login'))
+
+
 # --- INICIALIZACIÓN DE LA BASE DE DATOS COMO COMANDO DE FLASK ---
 
 def get_data():
     """Retorna los datos de hombres y mujeres."""
-    # ... (datos omitidos por brevedad, asumiendo que ya tienes los datos correctos)
+    # Lista de 48 nombres de MUJERES
     datos_mujeres = [
         ("ALEXIA", "p1.jpg"), ("ASTRID ORIANA", "p2.jpg"), ("BELINDA SHAMIRA", "p3.jpg"), 
         ("BIOMAYRA SHOANA", "p4.jpg"), ("CAMILA JADIYÉH", "p5.jpg"), ("GRISEL NATALY", "p6.jpg"), 
