@@ -1,55 +1,187 @@
-<!-- login.html: Pantalla de acceso con contraseña fija -->
+<!-- room.html: Sala de chat para un tema específico (Tema Claro) -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecretPass | Acceso Privado</title>
+    <title>SecretPass | Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script type="module">
+        // --- INICIALIZACIÓN Y CONFIGURACIÓN DE FIREBASE ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Variables inyectadas por Flask
+        const __app_id = "{{ app_id }}";
+        const __firebase_config = "{{ firebase_config_json | safe }}";
+
+        // Obtener IDs de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomKey = urlParams.get('room');
+        const topicId = urlParams.get('topic');
+        
+        let db, auth;
+        let userId = null;
+        
+        // El nombre de la colección de mensajes ahora es única por TEMA (topicId)
+        const collectionPath = `artifacts/${__app_id}/public/data/messages_${topicId}`;
+
+        // Función para mostrar errores
+        const displayError = (message) => {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = `Error: ${message}`;
+            errorElement.classList.remove('hidden');
+        };
+
+        const initFirebase = async () => {
+            try {
+                // 1. Configuración de Firebase
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 2. Autenticación Anónima
+                const userCredential = await signInAnonymously(auth);
+                userId = userCredential.user.uid;
+                
+                console.log("Chat inicializado. User ID:", userId);
+
+                // 3. Iniciar la carga de mensajes
+                loadMessages();
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                displayError("Error al inicializar Firebase. Revisa la consola o las variables de Render.");
+            }
+        };
+
+        const loadMessages = () => {
+            const messagesList = document.getElementById('messages-list');
+            const messagesQuery = query(collection(db, collectionPath));
+            
+            // Usar onSnapshot para recibir actualizaciones en tiempo real
+            onSnapshot(messagesQuery, (snapshot) => {
+                messagesList.innerHTML = '';
+                let messagesHtml = '';
+                
+                // Ordenar mensajes por timestamp de forma ascendente
+                snapshot.docs.sort((a, b) => {
+                    const timeA = a.data().timestamp ? a.data().timestamp.toMillis() : 0;
+                    const timeB = b.data().timestamp ? b.data().timestamp.toMillis() : 0;
+                    return timeA - timeB;
+                }).forEach((doc) => {
+                    const data = doc.data();
+                    const isCurrentUser = data.userId === userId;
+                    const time = data.timestamp ? new Date(data.timestamp.toMillis()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Ahora';
+                    // Mostrar solo los primeros 6 caracteres del ID como identificador anónimo
+                    const userDisplayId = data.userId.substring(0, 6); 
+                    
+                    messagesHtml += `
+                        <div class="flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}">
+                            <div class="max-w-xs lg:max-w-md ${isCurrentUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-200 text-gray-800 rounded-tl-none'} p-3 rounded-xl shadow-md">
+                                <div class="text-xs font-semibold ${isCurrentUser ? 'text-indigo-200' : 'text-indigo-600'} mb-1">${isCurrentUser ? 'Tú' : userDisplayId}</div>
+                                <p class="text-sm break-words">${data.text}</p>
+                                <div class="text-right text-xs mt-1 ${isCurrentUser ? 'text-indigo-300' : 'text-gray-500'}">${time}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                messagesList.innerHTML = messagesHtml;
+                // Scroll automático al último mensaje
+                messagesList.scrollTop = messagesList.scrollHeight;
+
+            }, (error) => {
+                console.error("Error al escuchar mensajes:", error);
+                displayError("Error al cargar los mensajes. Vuelve a la lista de temas.");
+            });
+        };
+
+        // Función para enviar mensajes
+        window.sendMessage = async () => {
+            const messageInput = document.getElementById('message-input');
+            const text = messageInput.value.trim();
+
+            if (!text || !db || !userId) return;
+
+            try {
+                await addDoc(collection(db, collectionPath), {
+                    text: text,
+                    userId: userId,
+                    timestamp: serverTimestamp()
+                });
+                messageInput.value = '';
+            } catch (error) {
+                console.error("Error al enviar mensaje:", error);
+                displayError("Fallo al enviar el mensaje.");
+            }
+        };
+
+        // Enviar al presionar Enter
+        window.handleKeyPress = (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Evita salto de línea
+                sendMessage();
+            }
+        };
+
+        // Iniciar Firebase cuando la página cargue
+        window.onload = initFirebase;
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0d1117;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            background-color: #f4f6f9; /* Fondo claro */
+        }
+        .chat-container {
+            max-height: calc(100vh - 120px); /* Altura dinámica */
         }
     </style>
 </head>
-<body>
-    <div class="w-full max-w-sm p-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
-        <h1 class="text-3xl font-bold text-center text-green-400 mb-2">SecretPass</h1>
-        <p class="text-center text-gray-400 mb-6">Acceso al Muro de Debate Privado</p>
-        
-        <!-- INICIO DE LA MODIFICACIÓN: Bloque para mostrar errores -->
-        {% if error %}
-            <div class="bg-red-800 p-3 rounded-lg text-white text-sm text-center mb-4 border border-red-600 shadow-md">
-                {{ error }}
-            </div>
-        {% endif %}
-        <!-- FIN DE LA MODIFICACIÓN -->
+<body class="p-4 sm:p-6 flex flex-col h-screen">
 
-        <form method="POST" action="/">
-            <div class="mb-4">
-                <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Contraseña</label>
-                <input 
-                    type="password" 
-                    id="password"
-                    name="password" 
-                    placeholder="Introduce la contraseña secreta"
-                    required
-                    class="w-full px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-150"
-                >
+    <!-- Encabezado y Navegación -->
+    <header class="max-w-3xl mx-auto w-full bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-100 mb-4">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-extrabold text-indigo-600">SecretPass | Debate</h1>
+                <p class="text-sm text-gray-500 mt-1">Sala: {{ session['room_key'] }} | Tema: {{ request.args.get('topic') }}</p>
             </div>
-            
-            <button
-                type="submit"
-                class="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-gray-900 bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150"
+            <!-- Botón de regreso a la lista de temas (Vuelve a la ruta topics.html) -->
+            <a href="{{ url_for('topic_list', room=session['room_key']) }}" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 shadow-md">
+                Volver a Temas
+            </a>
+        </div>
+        <p id="error-message" class="text-center text-red-600 mt-3 hidden font-semibold"></p>
+    </header>
+
+    <!-- Contenedor Principal de Mensajes -->
+    <main class="flex-grow max-w-3xl mx-auto w-full bg-white p-4 rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <div id="messages-list" class="chat-container overflow-y-auto pb-4">
+            <p class="text-center text-gray-500 mt-4">Conectando...</p>
+        </div>
+    </main>
+
+    <!-- Área de Input para el Nuevo Mensaje -->
+    <footer class="max-w-3xl mx-auto w-full mt-4">
+        <div class="flex gap-2">
+            <input 
+                type="text" 
+                id="message-input" 
+                placeholder="Escribe tu opinión..."
+                onkeypress="handleKeyPress(event)"
+                class="flex-grow px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
             >
-                Entrar
+            <button
+                onclick="sendMessage()"
+                class="shrink-0 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition duration-200 shadow-lg"
+            >
+                Enviar
             </button>
-        </form>
-    </div>
+        </div>
+    </footer>
 </body>
 </html>
