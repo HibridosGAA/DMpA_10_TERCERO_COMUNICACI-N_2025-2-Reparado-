@@ -1,15 +1,18 @@
+# app.py: Aplicación Flask para SecretPass
+# Incluye Login, Contraseña Fija y Manejo Correcto de Variables de Entorno.
+
 import os
-import json
 from flask import Flask, render_template, request, redirect, url_for, session
 
-# --- Configuración de Flask ---
+# --- CONFIGURACIÓN DE LA APLICACIÓN ---
 app = Flask(__name__)
 # La clave secreta es necesaria para manejar las sesiones
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key_for_dev_change_it')
 
-# Obtener la configuración de Firebase inyectada por el entorno
-FIREBASE_CONFIG_JSON = os.environ.get('FIREBASE_CONFIG', '{}')
-APP_ID = os.environ.get('APP_ID', 'default-app-id')
+# Obtener la configuración de Firebase inyectada por el entorno de Render
+# Usamos los nombres de variables que TÚ usaste en tu entorno de Render.
+FIREBASE_CONFIG_JSON = os.environ.get('FIREBASE_CONFIG_JSON', '{}')
+APP_ID = os.environ.get('GHOSTEXT_APP_ID', 'default-app-id')
 
 # --- CONFIGURACIÓN DE SEGURIDAD FIJA ---
 # La contraseña que los usuarios DEBEN ingresar
@@ -34,10 +37,11 @@ def login():
             # Si la contraseña es correcta, usamos la clave fija para la sala
             session['room_key'] = SECRET_ROOM_KEY
             # Redirige a la lista de temas para esta sala secreta
-            return redirect(url_for('topic_list', room=SECRET_ROOM_KEY))
+            # Nota: Cambiado a 'topics_list' para ser consistente con el nombre de la función
+            return redirect(url_for('topics_list')) 
         else:
             error = "Contraseña incorrecta. Inténtalo de nuevo."
-        
+            
     # Pasa el mensaje de error a la plantilla
     return render_template('login.html', error=error)
 
@@ -50,12 +54,12 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/chat')
-def topic_list():
+@app.route('/topics')
+def topics_list():
     """
     Muestra la lista de temas (recuadros) para el debate.
     """
-    room_key = request.args.get('room') or session.get('room_key')
+    room_key = session.get('room_key')
     
     # Bloquea el acceso si no hay clave en la sesión (o si la clave no es la correcta)
     if not room_key or room_key != SECRET_ROOM_KEY:
@@ -64,7 +68,9 @@ def topic_list():
     return render_template(
         'topics.html',
         app_id=APP_ID,
-        firebase_config_json=FIREBASE_CONFIG_JSON
+        firebase_config_json=FIREBASE_CONFIG_JSON,
+        # También pasamos la room_key para que topics.html sepa dónde buscar los temas
+        room_key=room_key 
     )
 
 @app.route('/room')
@@ -72,11 +78,14 @@ def chat_room():
     """
     Muestra la sala de chat para un tema y una clave de acceso específicos.
     """
-    room_key = request.args.get('room')
+    # El ID del tema siempre viene por URL
     topic_id = request.args.get('topic')
-    
+    # La clave de la sala la tomamos de la sesión para la seguridad
+    room_key = session.get('room_key')
+
     if not room_key or not topic_id:
-        return redirect(url_for('topic_list', room=room_key))
+        # Si falta algo, volvemos a la lista de temas (o login si no hay sesión)
+        return redirect(url_for('topics_list'))
 
     # Seguridad: Asegura que la clave de la URL coincide con la clave secreta fija
     if room_key != SECRET_ROOM_KEY:
@@ -91,9 +100,6 @@ def chat_room():
 
 # Solo para desarrollo local
 if __name__ == '__main__':
-    if not os.environ.get('FLASK_SECRET_KEY'):
-        import secrets
-        app.secret_key = secrets.token_hex(16)
-        print(f"Usando una clave secreta de desarrollo: {app.secret_key}")
-    
-    app.run(debug=True)
+    # Usar el puerto de Render si está disponible
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
