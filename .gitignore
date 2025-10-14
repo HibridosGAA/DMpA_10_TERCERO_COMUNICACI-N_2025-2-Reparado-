@@ -1,0 +1,34 @@
+------------------------------------
+Archivos de Python / Entornos Virtuales
+------------------------------------
+pycache/
+*.pyc
+*.pyd
+*.so
+
+Directorios de entornos virtuales (venv)
+venv/
+env/
+
+Archivos de depuración y logs
+*.log
+.coverage
+.pytest_cache/
+
+------------------------------------
+Archivos específicos de Flask/IDEs
+------------------------------------
+Carpeta de sesiones de Flask (si se usara)
+/instance/
+
+Configuraciones locales de IDEs (ej. VS Code)
+.vscode/
+
+------------------------------------
+Archivos de Sistema y Temporales
+------------------------------------
+macOS
+.DS_Store
+
+Windows
+Thumbs.db
