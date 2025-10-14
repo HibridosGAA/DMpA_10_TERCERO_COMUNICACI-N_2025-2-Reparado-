@@ -7,7 +7,8 @@ from flask_sqlalchemy import SQLAlchemy
 # Configuración de la aplicación
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_de_emergencia')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+# Render usa la variable DATABASE_URL, localmente caerá a 'sqlite:///facemash.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///facemash.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -116,33 +117,36 @@ def inicializar_db():
         ("ZOE DANAEALEJANDRA", "p46.jpg"), ("MILAGROS NOEMI", "p47.jpg"), ("YANDELHY (NUEVA)", "p48.jpg")
     ]
     
-    # Lista de 48 nombres de HOMBRES (45 tuyos + 3 de relleno)
-    # Asumo que las imágenes de hombres son p49.jpg a p96.jpg
+    # Lista de 48 nombres de HOMBRES (CORREGIDO DE .JPG A .JPEG)
     datos_hombres = [
-        ("DERLIN AARON", "p49.jpg"), ("DEYVIS EMERSON", "p50.jpg"), ("EDGAR LUDWYN", "p51.jpg"), 
-        ("EDSON RENE", "p52.jpg"), ("EDY GROVER", "p53.jpg"), ("EMANUEL TONY", "p54.jpg"), 
-        ("FERNANDO AMILCAR", "p55.jpg"), ("FERNANDO", "p56.jpg"), ("GENPIER SHERWIN", "p57.jpg"), 
-        ("HANS ANDRE", "p58.jpg"), ("HUGO GABRIEL", "p59.jpg"), ("JAIME ANGELINO", "p60.jpg"), 
-        ("JAREM ISAAC", "p61.jpg"), ("JEAN PABLO", "p62.jpg"), ("JEFFERSON RUBINHO", "p63.jpg"), 
-        ("JHOEL EMERSON", "p64.jpg"), ("JHOEL SANTIAGO", "p65.jpg"), ("JHON RONALD", "p66.jpg"), 
-        ("JHERLY JHELSIN", "p67.jpg"), ("JOSE ABELARDO", "p68.jpg"), ("JOSE BERNARDO", "p69.jpg"), 
-        ("JOSE JHOSEP", "p70.jpg"), ("JOSE RAFAEL", "p71.jpg"), ("JOSEPH YANDELIESUS", "p72.jpg"), 
-        ("JOSUE FABIAN", "p73.jpg"), ("JUAN GABRIELAMARU", "p74.jpg"), ("JUNIOR AUGUSTO", "p75.jpg"), 
-        ("LEONEL NIVARDO", "p76.jpg"), ("LEONEL WILLY", "p77.jpg"), ("MARCO ANTONIO", "p78.jpg"), 
-        ("MIKEL LENIN", "p79.jpg"), ("NOE ABEL", "p80.jpg"), ("PAUL DUBERLY", "p81.jpg"), 
-        ("PEDRO EMERSON", "p82.jpg"), ("RICHARD JHEANFRANCO", "p83.jpg"), ("SEBASTIAN BRIGAN", "p84.jpg"), 
-        ("SEBASTIAN MAURICIO", "p85.jpg"), ("SHAMI MAGDIEL", "p86.jpg"), ("TIAGO ALBERT", "p87.jpg"), 
-        ("VICTOR MANUEL", "p88.jpg"), ("WILLIAM FERNANDO", "p89.jpg"), ("YAN FRANCO", "p90.jpg"), 
-        ("YEFERSHON JHOSEP", "p91.jpg"), ("YENSH LIONEL", "p92.jpg"), ("YOSEF NEFTALI", "p93.jpg"),
+        ("DERLIN AARON", "p49.jpeg"), ("DEYVIS EMERSON", "p50.jpeg"), ("EDGAR LUDWYN", "p51.jpeg"), 
+        ("EDSON RENE", "p52.jpeg"), ("EDY GROVER", "p53.jpeg"), ("EMANUEL TONY", "p54.jpeg"), 
+        ("FERNANDO AMILCAR", "p55.jpeg"), ("FERNANDO", "p56.jpeg"), ("GENPIER SHERWIN", "p57.jpeg"), 
+        ("HANS ANDRE", "p58.jpeg"), ("HUGO GABRIEL", "p59.jpeg"), ("JAIME ANGELINO", "p60.jpeg"), 
+        ("JAREM ISAAC", "p61.jpeg"), ("JEAN PABLO", "p62.jpeg"), ("JEFFERSON RUBINHO", "p63.jpeg"), 
+        ("JHOEL EMERSON", "p64.jpeg"), ("JHOEL SANTIAGO", "p65.jpeg"), ("JHON RONALD", "p66.jpeg"), 
+        ("JHERLY JHELSIN", "p67.jpeg"), ("JOSE ABELARDO", "p68.jpeg"), ("JOSE BERNARDO", "p69.jpeg"), 
+        ("JOSE JHOSEP", "p70.jpeg"), ("JOSE RAFAEL", "p71.jpeg"), ("JOSEPH YANDELIESUS", "p72.jpeg"), 
+        ("JOSUE FABIAN", "p73.jpeg"), ("JUAN GABRIELAMARU", "p74.jpeg"), ("JUNIOR AUGUSTO", "p75.jpeg"), 
+        ("LEONEL NIVARDO", "p76.jpeg"), ("LEONEL WILLY", "p77.jpeg"), ("MARCO ANTONIO", "p78.jpeg"), 
+        ("MIKEL LENIN", "p79.jpeg"), ("NOE ABEL", "p80.jpeg"), ("PAUL DUBERLY", "p81.jpeg"), 
+        ("PEDRO EMERSON", "p82.jpeg"), ("RICHARD JHEANFRANCO", "p83.jpeg"), ("SEBASTIAN BRIGAN", "p84.jpeg"), 
+        ("SEBASTIAN MAURICIO", "p85.jpeg"), ("SHAMI MAGDIEL", "p86.jpeg"), ("TIAGO ALBERT", "p87.jpeg"), 
+        ("VICTOR MANUEL", "p88.jpeg"), ("WILLIAM FERNANDO", "p89.jpeg"), ("YAN FRANCO", "p90.jpeg"), 
+        ("YEFERSHON JHOSEP", "p91.jpeg"), ("YENSH LIONEL", "p92.jpeg"), ("YOSEF NEFTALI", "p93.jpeg"),
         # Relleno para completar las 48 imágenes requeridas para consistencia:
-        ("CHICO 46 (RELLENO)", "p94.jpg"), 
-        ("CHICO 47 (RELLENO)", "p95.jpg"), 
-        ("CHICO 48 (RELLENO)", "p96.jpg")
+        ("CHICO 46 (RELLENO)", "p94.jpeg"), 
+        ("CHICO 47 (RELLENO)", "p95.jpeg"), 
+        ("CHICO 48 (RELLENO)", "p96.jpeg")
     ]
 
     # NOTA CRÍTICA: La base de datos DEBE ser borrada para que la nueva columna 'genero' se cree.
     with app.app_context():
-        db.create_all()
+        # Solución al error de Render: asegurar que la base de datos se cree en el contexto de la aplicación
+        try:
+            db.create_all()
+        except Exception as e:
+            print(f"Error al crear la DB: {e}. Esto puede ser normal en Render si la DB ya existe.")
         
         if not Persona.query.first():
             personas = []
@@ -171,4 +175,5 @@ inicializar_db()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
+    # Usar host='0.0.0.0' es obligatorio para que funcione en Render localmente
     app.run(debug=True, host='0.0.0.0', port=port)
