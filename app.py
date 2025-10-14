@@ -4,18 +4,18 @@ import os
 import click 
 
 from flask import Flask, render_template, request, redirect, url_for
-# Importación clave: Importamos 'desc' para el ordenamiento en el ranking
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import desc # <-- Aseguramos la importación de 'desc'
+from sqlalchemy import desc # Importación clave para el ordenamiento en ranking
 from whitenoise import WhiteNoise 
 
 # Configuración de la aplicación
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_de_emergencia')
 
-# --- CORRECCIÓN CRÍTICA DE CONFIGURACIÓN DB PARA RENDER ---
+# --- CONFIGURACIÓN DE BASE DE DATOS PARA RENDER (POSTGRESQL) ---
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///facemash.db')
 
+# Corrección del formato de la URL de PostgreSQL
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
 
@@ -33,7 +33,6 @@ db.init_app(app)
 
 # Modelo de la Persona
 class Persona(db.Model):
-    # Nota: Usar el nombre de tabla en minúsculas es mejor para PostgreSQL
     __tablename__ = 'persona' 
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(80), nullable=False)
@@ -74,14 +73,11 @@ def index(genero):
     if genero not in ['H', 'M']:
         return redirect(url_for('elegir_categoria'))
 
-    # Filtrar personas por género
     personas = Persona.query.filter_by(genero=genero).all() 
     
     if len(personas) < 2:
-        # Mensaje de error si la DB no está poblada 
-        return "ERROR: La base de datos no tiene suficientes personas en la categoría. Asegúrate que la DB esté conectada y poblada."
+        return "ERROR: La base de datos no tiene suficientes personas en la categoría."
         
-    # Seleccionar dos personas distintas al azar
     persona_a, persona_b = random.sample(personas, 2)
     
     return render_template('index.html', persona_a=persona_a, persona_b=persona_b, genero=genero)
@@ -108,8 +104,7 @@ def ranking(genero):
     if genero not in ['H', 'M']:
         return redirect(url_for('elegir_categoria'))
 
-    # USANDO desc(Persona.elo_score) explícitamente para PostgreSQL
-    # Esto asegura que la base de datos interprete correctamente el orden descendente
+    # Esta línea ahora debe funcionar con PostgreSQL gracias a la importación de 'desc'
     top_personas = Persona.query.filter_by(genero=genero).order_by(desc(Persona.elo_score)).all()
     
     titulo = "Hombres" if genero == 'H' else "Mujeres"
@@ -119,7 +114,7 @@ def ranking(genero):
 
 def get_data():
     """Retorna los datos de hombres y mujeres."""
-    # Lista de 48 nombres de MUJERES
+    # ... (datos omitidos por brevedad, asumiendo que ya tienes los datos correctos)
     datos_mujeres = [
         ("ALEXIA", "p1.jpg"), ("ASTRID ORIANA", "p2.jpg"), ("BELINDA SHAMIRA", "p3.jpg"), 
         ("BIOMAYRA SHOANA", "p4.jpg"), ("CAMILA JADIYÉH", "p5.jpg"), ("GRISEL NATALY", "p6.jpg"), 
@@ -162,13 +157,11 @@ def get_data():
     ]
     return datos_mujeres, datos_hombres
 
-
 @app.cli.command("init-db")
 def init_db_command():
     """Crea las tablas de la DB y las puebla si no hay datos."""
     with app.app_context():
         try:
-            # Drop/Create para asegurar limpieza en cada despliegue con el Build Command
             db.drop_all()
             db.create_all()
             click.echo("Tablas de la DB recreadas exitosamente.")
@@ -201,9 +194,7 @@ def init_db_command():
 
 # Ejecución de la aplicación
 if __name__ == '__main__':
-    # Esto es solo para ejecución local, Render usa gunicorn
     port = int(os.environ.get('PORT', 5000))
-    # Aseguramos que la inicialización se haga en el contexto local
     with app.app_context():
         init_db_command() 
         
