@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import random
 import os
+import click # Se usa para crear comandos de Flask
+
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
@@ -10,21 +12,23 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_de_e
 # Render usa la variable DATABASE_URL, localmente caerá a 'sqlite:///facemash.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///facemash.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+
+# Inicializamos SQLAlchemy sin la aplicación (db = SQLAlchemy())
+db = SQLAlchemy()
+db.init_app(app) # Inicializamos la DB DENTRO del contexto de la app
 
 # Modelo de la Persona
 class Persona(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(80), nullable=False)
     imagen_url = db.Column(db.String(200), nullable=False)
-    # NUEVA COLUMNA: Genero ('H' para Hombres, 'M' para Mujeres)
     genero = db.Column(db.String(1), nullable=False) 
     elo_score = db.Column(db.Integer, default=1400)
 
     def __repr__(self):
         return f"<Persona {self.nombre} ({self.genero}) | Elo: {self.elo_score}>"
 
-# --- Función de Actualización Elo (Sin cambios) ---
+# --- Función de Actualización Elo ---
 K_FACTOR = 32
 
 def actualizar_elo(ganador, perdedor):
@@ -41,12 +45,12 @@ def actualizar_elo(ganador, perdedor):
     
     db.session.commit()
 
-# --- Rutas y Lógica de la Aplicación ---
+# --- Rutas y Lógica de la Aplicación (Sin cambios) ---
 
 @app.route('/')
 def elegir_categoria():
     """Ruta inicial que permite al usuario elegir entre Hombres y Mujeres."""
-    return render_template('inicio.html') # NUEVO TEMPLATE
+    return render_template('inicio.html') 
 
 @app.route('/vote/<genero>')
 def index(genero):
@@ -70,7 +74,7 @@ def vote():
     """Procesa el voto y redirige al voto de la misma categoría."""
     ganador_id = request.form.get('ganador_id')
     perdedor_id = request.form.get('perdedor_id')
-    genero = request.form.get('genero') # Obtenemos el género de la votación
+    genero = request.form.get('genero') 
     
     if ganador_id and perdedor_id and genero:
         ganador = Persona.query.get(ganador_id)
@@ -79,7 +83,6 @@ def vote():
         if ganador and perdedor:
             actualizar_elo(ganador, perdedor)
             
-    # Redirigir a la página de votación del MISMO género
     return redirect(url_for('index', genero=genero))
 
 @app.route('/ranking/<genero>')
@@ -93,10 +96,10 @@ def ranking(genero):
     titulo = "Hombres" if genero == 'H' else "Mujeres"
     return render_template('ranking.html', personas=top_personas, genero=genero, titulo=titulo)
 
-# --- INICIALIZACIÓN DE LA APLICACIÓN (PARA CREAR Y POBLAR LA DB) ---
+# --- INICIALIZACIÓN DE LA BASE DE DATOS COMO COMANDO DE FLASK ---
 
-def inicializar_db():
-    
+def get_data():
+    """Retorna los datos de hombres y mujeres con la extensión corregida."""
     # Lista de 48 nombres de MUJERES
     datos_mujeres = [
         ("ALEXIA", "p1.jpg"), ("ASTRID ORIANA", "p2.jpg"), ("BELINDA SHAMIRA", "p3.jpg"), 
@@ -134,21 +137,23 @@ def inicializar_db():
         ("SEBASTIAN MAURICIO", "p85.jpeg"), ("SHAMI MAGDIEL", "p86.jpeg"), ("TIAGO ALBERT", "p87.jpeg"), 
         ("VICTOR MANUEL", "p88.jpeg"), ("WILLIAM FERNANDO", "p89.jpeg"), ("YAN FRANCO", "p90.jpeg"), 
         ("YEFERSHON JHOSEP", "p91.jpeg"), ("YENSH LIONEL", "p92.jpeg"), ("YOSEF NEFTALI", "p93.jpeg"),
-        # Relleno para completar las 48 imágenes requeridas para consistencia:
         ("CHICO 46 (RELLENO)", "p94.jpeg"), 
         ("CHICO 47 (RELLENO)", "p95.jpeg"), 
         ("CHICO 48 (RELLENO)", "p96.jpeg")
     ]
+    return datos_mujeres, datos_hombres
 
-    # NOTA CRÍTICA: La base de datos DEBE ser borrada para que la nueva columna 'genero' se cree.
-    with app.app_context():
-        # Solución al error de Render: asegurar que la base de datos se cree en el contexto de la aplicación
-        try:
-            db.create_all()
-        except Exception as e:
-            print(f"Error al crear la DB: {e}. Esto puede ser normal en Render si la DB ya existe.")
-        
+
+@app.cli.command("init-db")
+def init_db_command():
+    """Crea las tablas de la DB y las puebla si no hay datos."""
+    try:
+        # Crea todas las tablas
+        db.create_all()
+        print("Tablas de la DB creadas exitosamente.")
+
         if not Persona.query.first():
+            datos_mujeres, datos_hombres = get_data()
             personas = []
             
             # 1. Agregar Mujeres
@@ -165,15 +170,24 @@ def inicializar_db():
 
             db.session.add_all(personas)
             db.session.commit()
-            print(f"Base de datos poblada con éxito con {len(personas)} personas (48 Mujeres + 48 Hombres).")
+            click.echo(f"Base de datos poblada con éxito con {len(personas)} personas.")
         else:
-            print("La base de datos ya contiene datos, no se repobló.")
+            click.echo("La base de datos ya contiene datos, no se repobló.")
+            
+    except Exception as e:
+        click.echo(f"Error durante la inicialización de la DB: {e}")
 
 
-# La inicialización se ejecuta aquí
-inicializar_db()
-
+# Ejecución de la aplicación
 if __name__ == '__main__':
+    # Esta parte solo se ejecuta si corres 'python app.py' localmente.
+    # En Render, Gunicorn maneja el arranque.
+    with app.app_context():
+        # Ejecuta la inicialización de la DB al arrancar localmente
+        init_db_command() 
+        
     port = int(os.environ.get('PORT', 5000))
-    # Usar host='0.0.0.0' es obligatorio para que funcione en Render localmente
     app.run(debug=True, host='0.0.0.0', port=port)
+
+# Si Gunicorn arranca la app (en Render), esta función se ejecutará automáticamente.
+# Gunicorn utiliza 'app' como punto de entrada (gunicorn app:app).
