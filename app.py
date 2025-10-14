@@ -1,24 +1,41 @@
 # -*- coding: utf-8 -*-
 import random
 import os
-import click # Se usa para crear comandos de Flask
+import click 
 
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from whitenoise import WhiteNoise 
 
 # Configuración de la aplicación
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_de_emergencia')
-# Render usa la variable DATABASE_URL, localmente caerá a 'sqlite:///facemash.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///facemash.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Inicializamos SQLAlchemy sin la aplicación (db = SQLAlchemy())
+# --- CORRECCIÓN CRÍTICA DE CONFIGURACIÓN DB PARA RENDER ---
+# 1. Obtiene la URL de la DB proporcionada por Render (PostgreSQL) o usa SQLite localmente.
+db_url = os.environ.get('DATABASE_URL', 'sqlite:///facemash.db')
+
+# 2. Reemplaza 'postgresql://' por el driver específico 'postgresql+psycopg2://'
+# Esto es necesario para que Flask-SQLAlchemy funcione correctamente con Render.
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# -----------------------------------------------------------
+
+# Aplicar WhiteNoise para servir la carpeta 'static'
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', index_file=True)
+
+
+# Inicializamos SQLAlchemy
 db = SQLAlchemy()
-db.init_app(app) # Inicializamos la DB DENTRO del contexto de la app
+db.init_app(app) 
 
 # Modelo de la Persona
 class Persona(db.Model):
+    # Nota: Usar el nombre de tabla en minúsculas es mejor para PostgreSQL
+    __tablename__ = 'persona' 
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(80), nullable=False)
     imagen_url = db.Column(db.String(200), nullable=False)
@@ -45,7 +62,7 @@ def actualizar_elo(ganador, perdedor):
     
     db.session.commit()
 
-# --- Rutas y Lógica de la Aplicación (Sin cambios) ---
+# --- Rutas y Lógica de la Aplicación ---
 
 @app.route('/')
 def elegir_categoria():
@@ -58,11 +75,12 @@ def index(genero):
     if genero not in ['H', 'M']:
         return redirect(url_for('elegir_categoria'))
 
-    # Filtrar personas por género
-    personas = Persona.query.filter_by(genero=genero).all()
+    # Esta consulta fallaba porque la tabla no existía o no era visible
+    personas = Persona.query.filter_by(genero=genero).all() 
     
     if len(personas) < 2:
-        return f"ERROR: La base de datos no tiene suficientes personas en la categoría {genero}. Total: {len(personas)}"
+        # Mensaje de error si la DB no está poblada (ahora será un error de PostgreSQL)
+        return "ERROR: La base de datos no tiene suficientes personas en la categoría. Asegúrate que la DB esté conectada y poblada."
         
     # Seleccionar dos personas distintas al azar
     persona_a, persona_b = random.sample(personas, 2)
@@ -97,9 +115,8 @@ def ranking(genero):
     return render_template('ranking.html', personas=top_personas, genero=genero, titulo=titulo)
 
 # --- INICIALIZACIÓN DE LA BASE DE DATOS COMO COMANDO DE FLASK ---
-
 def get_data():
-    """Retorna los datos de hombres y mujeres con la extensión corregida."""
+    """Retorna los datos de hombres y mujeres."""
     # Lista de 48 nombres de MUJERES
     datos_mujeres = [
         ("ALEXIA", "p1.jpg"), ("ASTRID ORIANA", "p2.jpg"), ("BELINDA SHAMIRA", "p3.jpg"), 
@@ -147,47 +164,44 @@ def get_data():
 @app.cli.command("init-db")
 def init_db_command():
     """Crea las tablas de la DB y las puebla si no hay datos."""
-    try:
-        # Crea todas las tablas
-        db.create_all()
-        print("Tablas de la DB creadas exitosamente.")
+    with app.app_context():
+        try:
+            # Elimina y crea todas las tablas para garantizar un estado limpio en PostgreSQL
+            db.drop_all()
+            db.create_all()
+            click.echo("Tablas de la DB recreadas exitosamente.")
 
-        if not Persona.query.first():
-            datos_mujeres, datos_hombres = get_data()
-            personas = []
-            
-            # 1. Agregar Mujeres
-            for nombre, url_foto in datos_mujeres:  
-                personas.append(
-                    Persona(nombre=nombre, imagen_url=url_foto, elo_score=1400, genero='M')
-                )
-            
-            # 2. Agregar Hombres
-            for nombre, url_foto in datos_hombres:  
-                personas.append(
-                    Persona(nombre=nombre, imagen_url=url_foto, elo_score=1400, genero='H')
-                )
+            if not Persona.query.first():
+                datos_mujeres, datos_hombres = get_data()
+                personas = []
+                
+                # 1. Agregar Mujeres
+                for nombre, url_foto in datos_mujeres:  
+                    personas.append(
+                        Persona(nombre=nombre, imagen_url=url_foto, elo_score=1400, genero='M')
+                    )
+                
+                # 2. Agregar Hombres
+                for nombre, url_foto in datos_hombres:  
+                    personas.append(
+                        Persona(nombre=nombre, imagen_url=url_foto, elo_score=1400, genero='H')
+                    )
 
-            db.session.add_all(personas)
-            db.session.commit()
-            click.echo(f"Base de datos poblada con éxito con {len(personas)} personas.")
-        else:
-            click.echo("La base de datos ya contiene datos, no se repobló.")
-            
-    except Exception as e:
-        click.echo(f"Error durante la inicialización de la DB: {e}")
-
+                db.session.add_all(personas)
+                db.session.commit()
+                click.echo(f"Base de datos poblada con éxito con {len(personas)} personas.")
+            else:
+                click.echo("La base de datos ya contiene datos, no se repobló.")
+                
+        except Exception as e:
+            click.echo(f"Error durante la inicialización de la DB: {e}")
+            raise # Lanza el error para que Render se dé cuenta
 
 # Ejecución de la aplicación
 if __name__ == '__main__':
-    # Esta parte solo se ejecuta si corres 'python app.py' localmente.
-    # En Render, Gunicorn maneja el arranque.
+    # Esto es solo para ejecución local, Render usa gunicorn
     with app.app_context():
-        # Ejecuta la inicialización de la DB al arrancar localmente
         init_db_command() 
         
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
-
-# Si Gunicorn arranca la app (en Render), esta función se ejecutará automáticamente.
-# Gunicorn utiliza 'app' como punto de entrada (gunicorn app:app).
