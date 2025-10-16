@@ -10,7 +10,7 @@ from whitenoise import WhiteNoise
 
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 # La clave de acceso para votar está directamente aquí. (NO RECOMENDADO EN PRODUCCIÓN)
-FIXED_ACCESS_CODE = "supermonkeysmash2025" 
+FIXED_ACCESS_CODE = "perdon123" 
 # ----------------------------------
 
 # Configuración de la aplicación
