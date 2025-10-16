@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MonkeySmash - Elige Categoría</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+    <div class="w-full max-w-lg">
+        <div class="bg-white shadow-2xl rounded-xl p-10">
+            <h1 class="text-4xl font-extrabold text-center mb-6 text-gray-800">
+                Topsinho<span class="text-green-600">Rikinho</span>
+            </h1>
+            <p class="text-center text-xl text-gray-600 mb-8">¡Bienvenido! Elige la categoría que deseas votar:</p>
+
+            <div class="space-y-4">
+                <a href="{{ url_for('index', genero='H') }}" class="block w-full text-center py-4 bg-blue-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-[1.01]">
+                    VOTAR HOMBRES
+                </a>
+                <a href="{{ url_for('index', genero='M') }}" class="block w-full text-center py-4 bg-pink-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-pink-700 transition duration-300 transform hover:scale-[1.01]">
+                    VOTAR MUJERES
+                </a>
+            </div>
+
+            <div class="mt-8 text-center space-y-3">
+                <p class="text-md text-gray-600">Presiona "Ranking" para ver las estadísticas.</p>
+                <a href="{{ url_for('ranking', genero='M') }}" class="text-lg text-indigo-600 hover:text-indigo-800 transition duration-300 font-medium mr-4">Ver Ranking</a>
+                
+                <!-- Botón de Logout (solo se muestra si el usuario está logeado) -->
+                {% if session.get('logged_in') %}
+                    <a href="{{ url_for('logout') }}" class="text-lg text-red-600 hover:text-red-800 transition duration-300 font-medium">Cerrar Sesión</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
