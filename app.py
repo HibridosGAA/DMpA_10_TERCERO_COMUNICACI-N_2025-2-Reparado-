@@ -10,7 +10,7 @@ from whitenoise import WhiteNoise
 
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 # La clave de acceso para votar está directamente aquí. (NO RECOMENDADO EN PRODUCCIÓN)
-FIXED_ACCESS_CODE = "supermonkeysmash2025" 
+FIXED_ACCESS_CODE = "perdon123" 
 # ----------------------------------
 
 # Configuración de la aplicación
@@ -78,28 +78,29 @@ def login():
         if submitted_code == FIXED_ACCESS_CODE:
             # Si el código es correcto, marca la sesión como autenticada
             session['logged_in'] = True
-            # *** NUEVO: Establecer bandera para mostrar el modal de bienvenida ***
-            session['show_welcome'] = True 
             flash("Acceso exitoso. ¡A votar!")
             return redirect(url_for('elegir_categoria'))
         else:
             flash("Código de acceso incorrecto.", 'error')
             
-    # Si no está logueado y no ha enviado el formulario, muestra el login
     return render_template('login.html')
+
+@app.route('/welcome_message')
+def welcome_message():
+    """Muestra el mensaje de disculpa pública antes de proceder al login."""
+    # Si ya está logeado, lo mandamos directo a la elección de categoría
+    if session.get('logged_in'):
+        return redirect(url_for('elegir_categoria'))
+    return render_template('welcome.html')
 
 @app.route('/')
 def elegir_categoria():
     """Ruta inicial que permite al usuario elegir entre Hombres y Mujeres."""
-    # REDIRECCIONAR si el usuario no ha iniciado sesión
+    # REDIRECCIONAR si el usuario no ha iniciado sesión, ahora a la disculpa
     if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    
-    # Obtener el estado del modal (True si debe mostrarse, False/None si no)
-    show_modal = session.pop('show_welcome', False)
+        return redirect(url_for('welcome_message')) 
         
-    # Pasar la variable 'show_modal' a la plantilla 'inicio.html'
-    return render_template('inicio.html', show_modal=show_modal) 
+    return render_template('inicio.html') 
 
 @app.route('/vote/<genero>')
 def index(genero):
@@ -156,14 +157,11 @@ def ranking(genero):
 def logout():
     """Cierra la sesión y redirige al login."""
     session.pop('logged_in', None)
-    # *** NUEVO: Aseguramos que la disculpa se muestre la próxima vez que inicie sesión ***
-    session.pop('show_welcome', None) 
     flash("Sesión cerrada correctamente.")
     return redirect(url_for('login'))
 
 
 # --- INICIALIZACIÓN DE LA BASE DE DATOS COMO COMANDO DE FLASK ---
-# (El resto del código de get_data y init_db_command se mantiene igual)
 
 def get_data():
     """Retorna los datos de hombres y mujeres."""
