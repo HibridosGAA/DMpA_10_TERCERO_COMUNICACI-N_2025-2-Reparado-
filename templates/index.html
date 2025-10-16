@@ -3,257 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GHOSTEXT - Mensajería Anónima</title>
-    <!-- Tailwind CSS para el estilo moderno -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>MonkeySmash - Votar</title>
+    <!-- Usa Tailwind CSS para un diseño limpio y moderno -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
     <style>
-        /* Estilos personalizados para el tema oscuro */
+        /* Estilos CSS adicionales para el diseño de las tarjetas y el fondo */
+        .card {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            /* Estilo para que la imagen y el nombre sean un bloque interactivo */
+            overflow: hidden; 
+        }
+        .card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15);
+        }
+        /* Fondo CLARO y centrado, como en inicio.html */
         body {
-            background-color: #111827; /* Gris oscuro / Casi negro */
-            color: #f3f4f6; /* Texto claro */
-            font-family: 'Inter', sans-serif;
-        }
-        /* Contenedor principal: oscuro y definido */
-        .chat-container {
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
-            border: 1px solid #374151;
-        }
-        /* Estilos del scrollbar para dark mode */
-        #messages-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        #messages-container::-webkit-scrollbar-thumb {
-            background-color: #4b5563; /* Gris más oscuro */
-            border-radius: 10px;
-        }
-        #messages-container::-webkit-scrollbar-track {
-            background: #1f2937; /* Fondo del chat */
-        }
-        /* Burbujas de mensajes: diseño minimalista */
-        .message-bubble {
-            background-color: #1f2937; /* Gris oscuro para la burbuja */
-            border-left: 3px solid #10b981; /* Borde verde fantasma (GHOSTEXT accent) */
+            background-color: #F8F9FA; 
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- Contenedor Principal de la Aplicación -->
-    <div class="w-full max-w-xl bg-gray-900 shadow-2xl rounded-xl flex flex-col h-[90vh] chat-container">
-        
-        <!-- Header -->
-        <header class="p-6 border-b border-gray-700 bg-gray-900 rounded-t-xl">
-            <h1 class="text-4xl font-extrabold text-green-400 text-center">
-                GHOSTEXT
-            </h1>
-            <p class="text-sm text-gray-400 text-center mt-1">
-                El muro de susurros anónimos.
-            </p>
-            <p id="user-id-display" class="text-xs text-gray-500 text-center mt-2"></p>
-        </header>
+    <!-- CONTENEDOR PRINCIPAL BLANCO Y CENTRADO -->
+    <!-- Mismo estilo que inicio.html y login.html -->
+    <div class="w-full max-w-4xl text-center bg-white p-8 sm:p-10 rounded-xl shadow-2xl">
 
-        <!-- Contenedor de Mensajes (Tiempo Real) -->
-        <div id="messages-container" class="flex-grow p-4 space-y-4 overflow-y-auto">
-            <!-- Los mensajes se cargarán aquí -->
-            <div id="loading-indicator" class="text-center text-gray-500 p-8">Cargando mensajes...</div>
+        <h1 class="text-4xl font-extrabold mb-2 text-gray-800">
+            ¿Quién es mejor?
+        </h1>
+        <h2 class="text-xl text-green-600 font-semibold mb-4">
+            Categoría: {{ 'Hombres' if genero == 'H' else 'Mujeres' }}
+        </h2>
+        <p class="text-md text-gray-500 mb-8">Haz clic en la imagen de la persona que consideres mejor.</p>
+
+        <!-- Enlaces de Navegación -->
+        <div class="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-6 mb-10 text-lg">
+            <a href="{{ url_for('ranking', genero=genero) }}" class="text-indigo-600 hover:text-indigo-800 transition duration-300 font-medium">
+                Ver Ranking
+            </a>
+            <a href="{{ url_for('elegir_categoria') }}" class="text-blue-600 hover:text-blue-800 transition duration-300 font-medium">
+                Cambiar Categoría
+            </a>
+            <!-- Botón de Logout -->
+            {% if session.get('logged_in') %}
+                <a href="{{ url_for('logout') }}" class="text-red-600 hover:text-red-800 transition duration-300 font-medium">
+                    Cerrar Sesión
+                </a>
+            {% endif %}
         </div>
+        
+        <!-- FORMULARIO DE VOTACIÓN -->
+        <form id="vote-form" method="POST" action="{{ url_for('vote') }}" class="flex flex-col md:flex-row justify-center items-stretch space-y-6 md:space-y-0 md:space-x-8">
+            <input type="hidden" name="genero" value="{{ genero }}">
+            <input type="hidden" id="ganador_id" name="ganador_id" value="">
+            <input type="hidden" id="perdedor_id" name="perdedor_id" value="">
 
-        <!-- Área de Input para el Nuevo Mensaje -->
-        <footer class="p-4 border-t border-gray-700 bg-gray-800 rounded-b-xl">
-            <form id="message-form" class="flex space-x-3">
-                <input type="text" id="message-input" placeholder="Escribe tu GHOSTEXT aquí..." required 
-                       class="flex-grow p-3 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 placeholder-gray-400 focus:ring-green-500 focus:border-green-500">
+            <!-- Persona A (Izquierda) -->
+            <div id="card-a" class="card w-full max-w-xs flex flex-col bg-gray-50 border border-gray-200 rounded-xl shadow-md" 
+                 data-id="{{ persona_a.id }}" data-oponente-id="{{ persona_b.id }}" onclick="votar('{{ persona_a.id }}', '{{ persona_b.id }}')">
                 
-                <button type="submit" id="send-button"
-                        class="bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:bg-green-700 transition duration-150 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-                    Enviar
-                    <!-- Spinner para indicar carga/envío -->
-                    <svg id="spinner" class="animate-spin h-5 w-5 ml-2 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </button>
-            </form>
-            <div id="error-message" class="text-red-400 text-sm mt-2 hidden"></div>
-        </footer>
+                <img class="w-full h-72 sm:h-80 object-cover rounded-t-xl" 
+                     src="{{ url_for('static', filename=persona_a.imagen_url) }}" alt="Foto de {{ persona_a.nombre }}"
+                     onerror="this.onerror=null;this.src='https://placehold.co/300x300/CCCCCC/666666?text=FOTO';"
+                     >
+                
+                <div class="w-full py-3 bg-gray-200 font-extrabold text-lg text-gray-800 uppercase rounded-b-xl">
+                    {{ persona_a.nombre }}
+                </div>
+            </div>
 
+            <div class="flex items-center justify-center text-5xl font-extrabold text-gray-400 p-2 md:p-0">VS</div>
+            
+            <!-- Persona B (Derecha) -->
+            <div id="card-b" class="card w-full max-w-xs flex flex-col bg-gray-50 border border-gray-200 rounded-xl shadow-md" 
+                 data-id="{{ persona_b.id }}" data-oponente-id="{{ persona_a.id }}" onclick="votar('{{ persona_b.id }}', '{{ persona_a.id }}')">
+                
+                <img class="w-full h-72 sm:h-80 object-cover rounded-t-xl" 
+                     src="{{ url_for('static', filename=persona_b.imagen_url) }}" alt="Foto de {{ persona_b.nombre }}"
+                     onerror="this.onerror=null;this.src='https://placehold.co/300x300/CCCCCC/666666?text=FOTO';"
+                     >
+                
+                <div class="w-full py-3 bg-gray-200 font-extrabold text-lg text-gray-800 uppercase rounded-b-xl">
+                    {{ persona_b.nombre }}
+                </div>
+            </div>
+        </form>
     </div>
 
-    <!-- Scripts de Firebase y Lógica -->
-    <script type="module">
-        // Importaciones de Firebase (necesarias para la conexión y autenticación)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Configuración de variables globales proporcionadas por el entorno
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // Elementos del DOM
-        const messagesContainer = document.getElementById('messages-container');
-        const messageForm = document.getElementById('message-form');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-        const spinner = document.getElementById('spinner');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const errorMessageDiv = document.getElementById('error-message');
-        const userIdDisplay = document.getElementById('user-id-display'); 
-
-        let db, auth;
-        let isAuthReady = false;
-        const COLLECTION_NAME = 'ghostext_messages'; 
-
-        // 1. Funciones de Utilidad
-        function toggleLoading(isLoading) {
-            sendButton.disabled = isLoading;
-            spinner.classList.toggle('hidden', !isLoading);
+    <!-- Script para manejar el voto -->
+    <script>
+        function votar(ganadorId, perdedorId) {
+            document.getElementById('ganador_id').value = ganadorId;
+            document.getElementById('perdedor_id').value = perdedorId;
+            document.getElementById('vote-form').submit();
         }
-
-        function displayError(message) {
-            errorMessageDiv.textContent = message;
-            errorMessageDiv.classList.remove('hidden');
-            console.error("Error:", message);
-            // Ocultar el error después de 5 segundos
-            setTimeout(() => errorMessageDiv.classList.add('hidden'), 5000); 
-        }
-
-        function formatTimestamp(timestamp) {
-            if (!timestamp) return 'Justo ahora';
-            // Maneja objetos Timestamp de Firestore o un timestamp normal
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-            return date.toLocaleTimeString('es-ES', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-        }
-
-        // 2. Inicialización de Firebase
-        async function initializeFirebase() {
-            try {
-                // Habilitar logs de Firebase (útil para depuración)
-                setLogLevel('Debug');
-                
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Establecer persistencia solo para la sesión del navegador
-                await setPersistence(auth, browserSessionPersistence);
-                
-                // Autenticar al usuario de forma anónima/personalizada
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                isAuthReady = true;
-                
-                // Mostrar ID del usuario (aunque el chat es anónimo, la ID es necesaria para Firestore)
-                const userId = auth.currentUser?.uid || 'Anonimo';
-                userIdDisplay.textContent = `Tu ID (Anónima): ${userId}`;
-
-                // Una vez autenticado, iniciar la escucha de mensajes
-                startMessageListener();
-
-            } catch (error) {
-                displayError("Error al inicializar o autenticar Firebase: " + error.message);
-                loadingIndicator.textContent = "Error de conexión. Intenta recargar.";
-            }
-        }
-
-        // 3. Enviar Mensaje (función central)
-        async function sendMessage(event) {
-            event.preventDefault();
-            
-            const text = messageInput.value.trim();
-            if (!isAuthReady || !text) return;
-
-            messageInput.value = ''; // Limpiar input inmediatamente
-            toggleLoading(true);
-
-            try {
-                // Ruta pública para datos compartidos: /artifacts/{appId}/public/data/{collection_name}
-                const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME);
-
-                // Añadir el documento a Firestore
-                await addDoc(messagesRef, {
-                    // Solo guardamos el texto y la marca de tiempo, garantizando el anonimato.
-                    text: text,
-                    timestamp: serverTimestamp(), 
-                });
-
-            } catch (error) {
-                displayError("Error al enviar el mensaje: " + error.message);
-                // Si falla, restaurar el texto para que el usuario pueda reintentar
-                messageInput.value = text; 
-            } finally {
-                toggleLoading(false);
-            }
-        }
-
-        // 4. Escucha de Mensajes en Tiempo Real
-        function startMessageListener() {
-            if (!db || !isAuthReady) return;
-
-            // Ruta pública para la colección
-            const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME);
-            
-            // Consulta: ordenar por marca de tiempo (ascendente)
-            const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
-
-            // Escuchador en tiempo real (onSnapshot)
-            const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-                loadingIndicator.classList.add('hidden');
-                messagesContainer.innerHTML = ''; // Limpiar el contenedor
-                
-                let messagesChanged = false;
-
-                snapshot.forEach((doc) => {
-                    const message = doc.data();
-                    const messageElement = createMessageElement(message);
-                    messagesContainer.appendChild(messageElement);
-                    messagesChanged = true;
-                });
-
-                // Scroll automático solo si los mensajes cambiaron
-                if (messagesChanged) {
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }
-
-            }, (error) => {
-                displayError("Error al escuchar los mensajes: " + error.message);
-                loadingIndicator.textContent = "Error al cargar mensajes. Verifica la conexión a Firebase.";
-            });
-
-            // Opcional: limpiar el listener al cerrar la app (no necesario en este contexto, pero buena práctica)
-            // window.addEventListener('beforeunload', unsubscribe);
-        }
-
-        // 5. Creación del Elemento de Mensaje en el DOM
-        function createMessageElement(message) {
-            const div = document.createElement('div');
-            
-            // Clases de estilo para el "burbuja" del mensaje (Ghostext style)
-            div.className = "message-bubble flex flex-col p-3 pl-5 rounded-xl shadow-md max-w-[90%] break-words";
-            
-            // Contenido del mensaje
-            div.innerHTML = `
-                <p class="text-gray-200 text-base">${message.text}</p>
-                <div class="text-right text-xs text-gray-500 mt-1">
-                    ${formatTimestamp(message.timestamp)}
-                </div>
-            `;
-            return div;
-        }
-
-        // 6. Enlaces de Eventos
-        messageForm.addEventListener('submit', sendMessage);
-
-        // Iniciar la aplicación
-        initializeFirebase();
-
     </script>
 </body>
 </html>
