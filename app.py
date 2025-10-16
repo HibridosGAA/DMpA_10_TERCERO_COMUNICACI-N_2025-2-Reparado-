@@ -85,21 +85,12 @@ def login():
             
     return render_template('login.html')
 
-@app.route('/welcome')
-def welcome():
-    """Muestra la disculpa pública y el comunicado importante."""
-    # Redirige al inicio si ya está logueado, sino muestra el comunicado.
-    if session.get('logged_in'):
-        return redirect(url_for('elegir_categoria'))
-    return render_template('welcome.html')
-
 @app.route('/')
 def elegir_categoria():
     """Ruta inicial que permite al usuario elegir entre Hombres y Mujeres."""
     # REDIRECCIONAR si el usuario no ha iniciado sesión
     if not session.get('logged_in'):
-        # Si no está logueado, lo enviamos al comunicado primero
-        return redirect(url_for('welcome'))
+        return redirect(url_for('login'))
         
     return render_template('inicio.html') 
 
@@ -144,12 +135,8 @@ def vote():
 
 @app.route('/ranking/<genero>')
 def ranking(genero):
-    """Muestra el ranking filtrado por el género seleccionado, AHORA REQUIERE LOGIN."""
-    # REGLA DE SEGURIDAD AÑADIDA: El ranking SÍ requiere login.
-    if not session.get('logged_in'):
-        flash('Debes iniciar sesión para ver el ranking interno.', 'error')
-        return redirect(url_for('login'))
-        
+    """Muestra el ranking filtrado por el género seleccionado."""
+    # El ranking NO requiere login
     if genero not in ['H', 'M']:
         return redirect(url_for('elegir_categoria'))
 
@@ -252,7 +239,6 @@ def init_db_command():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     with app.app_context():
-        # Llama a la función de inicialización, que recrea y puebla la DB localmente
         init_db_command() 
         
     app.run(debug=True, host='0.0.0.0', port=port)
