@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunicado Importante - COAR Puno</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl mx-auto">
+        <div class="bg-white shadow-2xl rounded-xl p-8 sm:p-10 transform transition duration-500 border-t-8 border-red-600">
+            
+            <h1 class="text-4xl font-extrabold text-center mb-2 text-gray-800">
+                Monkey<span class="text-red-600">Smash</span>
+            </h1>
+            
+            <h2 class="text-2xl font-bold text-center text-red-700 mb-6">DISCULPA PÚBLICA</h2>
+
+            <div class="bg-red-50 p-6 rounded-lg border border-red-200 space-y-4">
+                
+                <h3 class="text-xl font-extrabold text-gray-800 leading-snug">
+                    A los Estudiantes del Colegio de Alto Rendimiento (COAR) Puno (Mujeres y Hombres)
+                </h3>
+                
+                <p class="font-semibold text-gray-700 leading-relaxed border-b pb-2 border-red-100">
+                    Asunto: Disculpa Pública por el uso no autorizado de sus nombres en un contexto académico.
+                </p>
+
+                <p class="text-gray-700 leading-relaxed text-sm">
+                    Estimadas/os estudiantes del COAR Puno,
+                </p>
+                
+                <p class="text-gray-700 leading-relaxed text-sm">
+                    Me dirijo a ustedes con la intención de ofrecer una disculpa pública, sincera y sin reservas, por haber utilizado sus nombres en el desarrollo de un trabajo o contexto de índole académica sin haber solicitado ni obtenido previamente su **consentimiento explícito**.
+                </p>
+                
+                <p class="text-gray-800 leading-relaxed font-semibold text-sm">
+                    Reconozco plenamente que el uso de sus nombres y datos, incluso dentro de un marco académico y sin ninguna mala intención, constituye una falta grave que vulnera su derecho fundamental a la privacidad y el control sobre su propia información personal. Si bien mi propósito fue únicamente avanzar en un estudio o proyecto de carácter formativo y no hubo fines maliciosos ni de lucro, entiendo que la ausencia de permiso es lo que marca la incorrección de mi actuar.
+                </p>
+                
+                <p class="text-gray-700 leading-relaxed text-sm">
+                    Lamento profundamente la preocupación, molestia o incomodidad que esta situación les haya podido generar. Mi falta fue un descuido de procedimiento y de ética al no priorizar el consentimiento como paso esencial e ineludible en cualquier actividad que involucre datos personales, especialmente en un entorno educativo.
+                </p>
+                
+                <p class="text-gray-700 leading-relaxed text-sm font-bold">
+                    Asumo completa responsabilidad por este error.
+                </p>
+
+                <p class="text-gray-700 leading-relaxed text-sm">
+                    Les aseguro que he tomado nota de este grave desliz y que, en adelante, aplicaré un protocolo riguroso para garantizar que cualquier futura actividad académica que involucre a estudiantes contará siempre con:
+                </p>
+                
+                <ul class="list-disc list-inside text-sm text-gray-700 ml-4 space-y-1">
+                    <li>Solicitud de **Consentimiento Informado y Explícito** por escrito antes de cualquier uso.</li>
+                    <li>Transparencia Total sobre el propósito y el alcance del uso de la información.</li>
+                    <li>Compromiso de Confidencialidad y Protección de sus datos.</li>
+                </ul>
+
+                <p class="text-gray-700 leading-relaxed text-sm">
+                    Mi más ferviente deseo es que este error no menoscabe el respeto y la confianza que debe existir entre todos los miembros de la comunidad educativa. Les reitero mis más sinceras disculpas a cada uno de los estudiantes del COAR Puno afectados.
+                </p>
+                
+                <p class="text-gray-700 leading-relaxed text-sm">
+                    Agradezco su comprensión y espero poder restablecer su confianza con acciones concretas en el futuro.
+                </p>
+                
+                <div class="mt-6 text-sm text-gray-800 pt-2 border-t border-red-200">
+                    <p>Atentamente,</p>
+                    <p class="font-bold">[Tu Nombre Completo / Nombre de la Institución o Persona Responsable]</p>
+                    <p>[Tu Cargo o Rol Académico (Si aplica)]</p>
+                    <p>[Fecha]</p>
+                </div>
+            </div>
+
+            <a href="{{ url_for('login') }}" class="mt-8 block">
+                <button class="w-full py-3 px-4 bg-gray-600 text-white font-bold rounded-lg shadow-lg hover:bg-gray-700 transition duration-300 transform hover:scale-[1.01]">
+                    Cerrar y Continuar al Acceso
+                </button>
+            </a>
+            
+        </div>
+    </div>
+</body>
+</html>

@@ -1,105 +1,105 @@
-# app.py: Aplicación Flask para SecretPass
-# Incluye Login, Contraseña Fija y Manejo Correcto de Variables de Entorno.
+# app.py: Aplicación Flask para MonkeySmash
+# Incluye Login, manejo de persistencia e inyección de variables de Firebase.
 
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 
 # --- CONFIGURACIÓN DE LA APLICACIÓN ---
 app = Flask(__name__)
-# La clave secreta es necesaria para manejar las sesiones
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key_for_dev_change_it')
+# Es CRÍTICO establecer la clave secreta para la seguridad de la sesión
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_smash_key_para_cambiar')
 
-# Obtener la configuración de Firebase inyectada por el entorno de Render
-# Usamos los nombres de variables que TÚ usaste en tu entorno de Render.
+# --- VARIABLES DE ENTORNO PARA PERSISTENCIA ---
+# Estas variables deben estar definidas en Render para la conexión a Firestore
 FIREBASE_CONFIG_JSON = os.environ.get('FIREBASE_CONFIG_JSON', '{}')
-APP_ID = os.environ.get('GHOSTEXT_APP_ID', 'default-app-id')
+APP_ID = os.environ.get('GHOSTEXT_APP_ID', 'default-monkey-smash-app-id') 
 
 # --- CONFIGURACIÓN DE SEGURIDAD FIJA ---
-# La contraseña que los usuarios DEBEN ingresar
-CORRECT_PASSWORD = "SUPERSECRETO"
-# El nombre interno de la sala que usaremos en Firestore (debe ser seguro)
-SECRET_ROOM_KEY = "official_private_debate_room"
+CORRECT_CODE = "smash2025" # La clave que los usuarios DEBEN ingresar
+AUTH_SESSION_KEY = "smash_authorized_user" 
+
+# --- RUTAS ---
+
+@app.route('/')
+def welcome():
+    """
+    Ruta Raíz: Muestra el comunicado de bienvenida (welcome.html) antes del Login.
+    Si el usuario ya está autenticado, lo salta y va a votar.
+    """
+    if session.get('auth_token') == AUTH_SESSION_KEY:
+        return redirect(url_for('vote'))
+        
+    return render_template('welcome.html')
 
 
-# --- Rutas de la Aplicación ---
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     """
     Ruta para el formulario de login. Pide y verifica la contraseña.
     """
-    error = None
+    # Si el usuario ya está autenticado, lo enviamos directamente a votar
+    if session.get('auth_token') == AUTH_SESSION_KEY:
+        return redirect(url_for('vote'))
+
     if request.method == 'POST':
-        # Nota: Ahora pedimos 'password', no 'room_key'
-        user_password = request.form.get('password')
+        user_code = request.form.get('code')
         
-        if user_password == CORRECT_PASSWORD:
-            # Si la contraseña es correcta, usamos la clave fija para la sala
-            session['room_key'] = SECRET_ROOM_KEY
-            # Redirige a la lista de temas para esta sala secreta
-            # Nota: Cambiado a 'topics_list' para ser consistente con el nombre de la función
-            return redirect(url_for('topics_list')) 
+        if user_code == CORRECT_CODE:
+            session['auth_token'] = AUTH_SESSION_KEY
+            flash('Acceso concedido. ¡A votar!', 'success')
+            return redirect(url_for('vote'))
         else:
-            error = "Contraseña incorrecta. Inténtalo de nuevo."
+            flash('Código de acceso incorrecto. Inténtalo de nuevo.', 'error')
             
-    # Pasa el mensaje de error a la plantilla
-    return render_template('login.html', error=error)
+    # Si es GET o la clave es incorrecta, muestra el formulario de login
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
-    """
-    Cierra la sesión y vuelve a la pantalla de login.
-    """
-    session.pop('room_key', None)
-    return redirect(url_for('login'))
+    """Cierra la sesión y vuelve a la pantalla de bienvenida."""
+    session.pop('auth_token', None)
+    # Redirige a la página principal con el comunicado
+    return redirect(url_for('welcome')) 
 
 
-@app.route('/topics')
-def topics_list():
+@app.route('/vote')
+def vote():
     """
-    Muestra la lista de temas (recuadros) para el debate.
+    Página principal donde el usuario ve los candidatos y puede votar.
     """
-    room_key = session.get('room_key')
-    
-    # Bloquea el acceso si no hay clave en la sesión (o si la clave no es la correcta)
-    if not room_key or room_key != SECRET_ROOM_KEY:
-        return redirect(url_for('login'))
+    if session.get('auth_token') != AUTH_SESSION_KEY:
+        flash('Debes iniciar sesión para votar.', 'error')
+        # Redirigimos al comunicado si no hay auth
+        return redirect(url_for('welcome')) 
         
     return render_template(
-        'topics.html',
+        'vote.html',
         app_id=APP_ID,
-        firebase_config_json=FIREBASE_CONFIG_JSON,
-        # También pasamos la room_key para que topics.html sepa dónde buscar los temas
-        room_key=room_key 
+        firebase_config_json=FIREBASE_CONFIG_JSON
     )
 
-@app.route('/room')
-def chat_room():
+@app.route('/ranking')
+def ranking():
     """
-    Muestra la sala de chat para un tema y una clave de acceso específicos.
+    Página para mostrar el ranking de votos (solo para usuarios autenticados).
     """
-    # El ID del tema siempre viene por URL
-    topic_id = request.args.get('topic')
-    # La clave de la sala la tomamos de la sesión para la seguridad
-    room_key = session.get('room_key')
-
-    if not room_key or not topic_id:
-        # Si falta algo, volvemos a la lista de temas (o login si no hay sesión)
-        return redirect(url_for('topics_list'))
-
-    # Seguridad: Asegura que la clave de la URL coincide con la clave secreta fija
-    if room_key != SECRET_ROOM_KEY:
-        return redirect(url_for('login'))
-    
+    if session.get('auth_token') != AUTH_SESSION_KEY:
+        flash('Debes iniciar sesión para ver el ranking.', 'error')
+        # Redirigimos al comunicado si no hay auth
+        return redirect(url_for('welcome')) 
+        
     return render_template(
-        'room.html',
+        'ranking.html',
         app_id=APP_ID,
         firebase_config_json=FIREBASE_CONFIG_JSON
     )
 
 
-# Solo para desarrollo local
 if __name__ == '__main__':
-    # Usar el puerto de Render si está disponible
+    # Configuración para que Flask se ejecute correctamente en Render (o localmente)
     port = int(os.environ.get('PORT', 5000))
+    # Asegúrate de establecer la variable de entorno FLASK_SECRET_KEY en Render
+    if app.secret_key == 'default_smash_key_para_cambiar':
+        print("¡ADVERTENCIA DE SEGURIDAD! Usa una clave secreta fuerte en FLASK_SECRET_KEY.")
+        
     app.run(host='0.0.0.0', port=port, debug=True)

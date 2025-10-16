@@ -1,245 +1,187 @@
-<!-- room.html: El chat de un tema específico con la lógica de Firebase -->
+<!-- room.html: Sala de chat para un tema específico (Tema Claro) -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="chatTitle">SecretPass | Tema</title>
-    <!-- Carga de Tailwind CSS para estilos modernos -->
+    <title>SecretPass | Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script type="module">
+        // --- INICIALIZACIÓN Y CONFIGURACIÓN DE FIREBASE ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Variables inyectadas por Flask
+        const __app_id = "{{ app_id }}";
+        const __firebase_config = "{{ firebase_config_json | safe }}";
+
+        // Obtener IDs de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomKey = urlParams.get('room');
+        const topicId = urlParams.get('topic');
+        
+        let db, auth;
+        let userId = null;
+        
+        // El nombre de la colección de mensajes ahora es única por TEMA (topicId)
+        const collectionPath = `artifacts/${__app_id}/public/data/messages_${topicId}`;
+
+        // Función para mostrar errores
+        const displayError = (message) => {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = `Error: ${message}`;
+            errorElement.classList.remove('hidden');
+        };
+
+        const initFirebase = async () => {
+            try {
+                // 1. Configuración de Firebase
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 2. Autenticación Anónima
+                const userCredential = await signInAnonymously(auth);
+                userId = userCredential.user.uid;
+                
+                console.log("Chat inicializado. User ID:", userId);
+
+                // 3. Iniciar la carga de mensajes
+                loadMessages();
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                displayError("Error al inicializar Firebase. Revisa la consola o las variables de Render.");
+            }
+        };
+
+        const loadMessages = () => {
+            const messagesList = document.getElementById('messages-list');
+            const messagesQuery = query(collection(db, collectionPath));
+            
+            // Usar onSnapshot para recibir actualizaciones en tiempo real
+            onSnapshot(messagesQuery, (snapshot) => {
+                messagesList.innerHTML = '';
+                let messagesHtml = '';
+                
+                // Ordenar mensajes por timestamp de forma ascendente
+                snapshot.docs.sort((a, b) => {
+                    const timeA = a.data().timestamp ? a.data().timestamp.toMillis() : 0;
+                    const timeB = b.data().timestamp ? b.data().timestamp.toMillis() : 0;
+                    return timeA - timeB;
+                }).forEach((doc) => {
+                    const data = doc.data();
+                    const isCurrentUser = data.userId === userId;
+                    const time = data.timestamp ? new Date(data.timestamp.toMillis()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Ahora';
+                    // Mostrar solo los primeros 6 caracteres del ID como identificador anónimo
+                    const userDisplayId = data.userId.substring(0, 6); 
+                    
+                    messagesHtml += `
+                        <div class="flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}">
+                            <div class="max-w-xs lg:max-w-md ${isCurrentUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-200 text-gray-800 rounded-tl-none'} p-3 rounded-xl shadow-md">
+                                <div class="text-xs font-semibold ${isCurrentUser ? 'text-indigo-200' : 'text-indigo-600'} mb-1">${isCurrentUser ? 'Tú' : userDisplayId}</div>
+                                <p class="text-sm break-words">${data.text}</p>
+                                <div class="text-right text-xs mt-1 ${isCurrentUser ? 'text-indigo-300' : 'text-gray-500'}">${time}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                messagesList.innerHTML = messagesHtml;
+                // Scroll automático al último mensaje
+                messagesList.scrollTop = messagesList.scrollHeight;
+
+            }, (error) => {
+                console.error("Error al escuchar mensajes:", error);
+                displayError("Error al cargar los mensajes. Vuelve a la lista de temas.");
+            });
+        };
+
+        // Función para enviar mensajes
+        window.sendMessage = async () => {
+            const messageInput = document.getElementById('message-input');
+            const text = messageInput.value.trim();
+
+            if (!text || !db || !userId) return;
+
+            try {
+                await addDoc(collection(db, collectionPath), {
+                    text: text,
+                    userId: userId,
+                    timestamp: serverTimestamp()
+                });
+                messageInput.value = '';
+            } catch (error) {
+                console.error("Error al enviar mensaje:", error);
+                displayError("Fallo al enviar el mensaje.");
+            }
+        };
+
+        // Enviar al presionar Enter
+        window.handleKeyPress = (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Evita salto de línea
+                sendMessage();
+            }
+        };
+
+        // Iniciar Firebase cuando la página cargue
+        window.onload = initFirebase;
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0d1117;
+            background-color: #f4f6f9; /* Fondo claro */
         }
-        /* Estilo para la caja de mensajes */
-        #messages-container {
-            max-height: calc(100vh - 12rem); /* Altura de la vista menos el encabezado y el pie */
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column-reverse; /* Muestra los mensajes nuevos abajo */
-        }
-        .message-box {
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .chat-container {
+            max-height: calc(100vh - 120px); /* Altura dinámica */
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-4xl font-extrabold text-center text-green-400 mb-1">SecretPass</h1>
-        <p class="text-center text-sm text-gray-400 mb-4">Muro de debate sobre: <span id="topic-display" class="font-bold text-white">Cargando...</span></p>
-        
-        <div class="flex justify-start items-center mb-6 border-b border-gray-700 pb-4">
-            <button onclick="history.back()" class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition duration-150 mr-4">
-                ← Volver a Temas
-            </button>
-            <p id="room-info" class="text-sm font-semibold text-gray-400"></p>
+<body class="p-4 sm:p-6 flex flex-col h-screen">
+
+    <!-- Encabezado y Navegación -->
+    <header class="max-w-3xl mx-auto w-full bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-100 mb-4">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-extrabold text-indigo-600">SecretPass | Debate</h1>
+                <p class="text-sm text-gray-500 mt-1">Sala: {{ session['room_key'] }} | Tema: {{ request.args.get('topic') }}</p>
+            </div>
+            <!-- Botón de regreso a la lista de temas (Vuelve a la ruta topics.html) -->
+            <a href="{{ url_for('topic_list', room=session['room_key']) }}" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 shadow-md">
+                Volver a Temas
+            </a>
         </div>
+        <p id="error-message" class="text-center text-red-600 mt-3 hidden font-semibold"></p>
+    </header>
 
-
-        <!-- Contenedor de Mensajes -->
-        <div id="messages-container" class="space-y-4 p-4 bg-gray-900 rounded-xl shadow-inner mb-4">
-            <!-- Los mensajes se inyectan aquí -->
-            <div id="loading-spinner" class="text-center text-gray-500">Cargando mensajes...</div>
+    <!-- Contenedor Principal de Mensajes -->
+    <main class="flex-grow max-w-3xl mx-auto w-full bg-white p-4 rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <div id="messages-list" class="chat-container overflow-y-auto pb-4">
+            <p class="text-center text-gray-500 mt-4">Conectando...</p>
         </div>
+    </main>
 
-        <!-- Área de Input -->
-        <form id="message-form" class="flex space-x-3 bg-gray-900 p-3 rounded-xl shadow-lg">
+    <!-- Área de Input para el Nuevo Mensaje -->
+    <footer class="max-w-3xl mx-auto w-full mt-4">
+        <div class="flex gap-2">
             <input 
                 type="text" 
                 id="message-input" 
-                placeholder="Escribe tu opinión o comentario aquí..."
-                maxlength="250"
-                class="flex-grow px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-150"
+                placeholder="Escribe tu opinión..."
+                onkeypress="handleKeyPress(event)"
+                class="flex-grow px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
             >
             <button
-                type="submit"
-                id="send-button"
-                class="flex-shrink-0 px-6 py-3 border border-transparent rounded-lg shadow-sm text-lg font-medium text-gray-900 bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150"
+                onclick="sendMessage()"
+                class="shrink-0 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition duration-200 shadow-lg"
             >
-                Opinar
+                Enviar
             </button>
-        </form>
-
-        <p id="error-message" class="mt-4 text-center text-sm text-red-400 hidden">
-            Error al conectar a la base de datos.
-        </p>
-
-    </div>
-
-    <!-- Variables de Configuración de Flask/Render -->
-    <script>
-        // ESTAS VARIABLES SON INYECTADAS POR EL SERVIDOR FLASK (app.py)
-        const __app_id = "{{ app_id }}";
-        const __firebase_config = {{ firebase_config_json | safe }};
-    </script>
-    
-    <!-- Librerías de Firebase -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // --- INICIALIZACIÓN Y CONFIGURACIÓN ---
-        
-        const errorMessageDiv = document.getElementById('error-message');
-        const messagesContainer = document.getElementById('messages-container');
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomKey = urlParams.get('room');
-        const topicId = urlParams.get('topic'); // Nuevo: ID del tema
-        
-        if (!roomKey || !topicId) {
-            // Si falta alguna clave, vuelve a la lista de temas (o login si falta roomKey)
-            window.location.href = roomKey ? `/chat?room=${roomKey}` : '/';
-        } else {
-            document.getElementById('room-info').textContent = `Acceso: ${roomKey}`;
-        }
-
-        let db, auth;
-        let userId = null;
-        let isAuthReady = false;
-        
-        try {
-            // Inicializar Firebase
-            const firebaseConfig = JSON.parse(__firebase_config);
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-
-            // Intentar autenticación anónima
-            signInAnonymously(auth).then(userCredential => {
-                userId = userCredential.user.uid;
-                isAuthReady = true;
-                messagesContainer.querySelector('#loading-spinner').remove();
-                console.log("Firebase y autenticación listos. UID:", userId);
-                loadTopicTitle();
-                setupMessageListener();
-            }).catch(error => {
-                console.error("Error de autenticación:", error);
-                errorMessageDiv.textContent = "Error de autenticación. Intenta recargar.";
-                errorMessageDiv.classList.remove('hidden');
-            });
-            
-        } catch (e) {
-            console.error("Error al inicializar Firebase. Configuración:", __firebase_config, "Error:", e);
-            errorMessageDiv.textContent = "Error al inicializar Firebase. Intenta recargar.";
-            errorMessageDiv.classList.remove('hidden');
-        }
-
-        // --- LÓGICA DE TEMAS Y MENSAJERÍA ---
-
-        function getRoomPath() {
-            // Ruta de la colección de mensajes específica para este tema
-            const sanitizedRoomKey = roomKey.replace(/[^a-zA-Z0-9]/g, '_'); // Sanear la clave de acceso
-            // La colección de mensajes es subcolección del tema
-            return `artifacts/${__app_id}/public/data/rooms/${sanitizedRoomKey}/topics/${topicId}/messages`;
-        }
-        
-        function getTopicDocPath() {
-            const sanitizedRoomKey = roomKey.replace(/[^a-zA-Z0-9]/g, '_');
-            return `artifacts/${__app_id}/public/data/rooms/${sanitizedRoomKey}/topics`;
-        }
-        
-        // Función para cargar el título del tema (solo para mostrarlo en el encabezado)
-        async function loadTopicTitle() {
-            try {
-                const topicDocRef = doc(db, getTopicDocPath(), topicId);
-                const topicDoc = await getDoc(topicDocRef);
-
-                if (topicDoc.exists()) {
-                    const title = topicDoc.data().title;
-                    document.getElementById('topic-display').textContent = title;
-                    document.getElementById('chatTitle').textContent = `SecretPass | ${title}`;
-                } else {
-                    document.getElementById('topic-display').textContent = "Tema Desconocido";
-                    // Podríamos redirigir si el tema no existe
-                }
-            } catch (error) {
-                console.error("Error al cargar el título del tema:", error);
-                document.getElementById('topic-display').textContent = "Error de carga";
-            }
-        }
-
-
-        function setupMessageListener() {
-            if (!isAuthReady || !db) return;
-
-            const messagesCollectionRef = collection(db, getRoomPath());
-            
-            // Query para obtener los mensajes ordenados por timestamp
-            const q = query(messagesCollectionRef, orderBy('timestamp', 'desc'));
-
-            // Escuchar cambios en tiempo real
-            onSnapshot(q, (snapshot) => {
-                messagesContainer.innerHTML = '';
-                
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const messageElement = createMessageElement(data);
-                    messagesContainer.appendChild(messageElement);
-                });
-            }, (error) => {
-                console.error("Error al escuchar mensajes:", error);
-                errorMessageDiv.textContent = "Error de conexión con la sala de chat.";
-                errorMessageDiv.classList.remove('hidden');
-            });
-        }
-
-        function createMessageElement(data) {
-            const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hora desconocida';
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message-box p-3 rounded-xl max-w-xs md:max-w-md shadow-md break-words';
-            
-            // Determinar si el mensaje es del usuario actual para alineación
-            const isSelf = data.userId === userId;
-
-            if (isSelf) {
-                messageDiv.classList.add('ml-auto', 'bg-green-600', 'text-white');
-            } else {
-                messageDiv.classList.add('mr-auto', 'bg-gray-700', 'text-gray-200');
-            }
-
-            messageDiv.innerHTML = `
-                <p class="text-sm">${data.text}</p>
-                <span class="block text-right text-xs mt-1 ${isSelf ? 'text-gray-200' : 'text-gray-400'}">${time}</span>
-            `;
-            return messageDiv;
-        }
-
-        // --- MANEJO DEL FORMULARIO ---
-
-        const messageForm = document.getElementById('message-form');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-
-        messageForm.addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            const text = messageInput.value.trim();
-            if (text === '' || !isAuthReady) return;
-
-            sendButton.disabled = true;
-            messageInput.value = '';
-
-            try {
-                await addDoc(collection(db, getRoomPath()), {
-                    text: text,
-                    userId: userId, // Usamos el ID de Firebase para diferenciar remitentes
-                    timestamp: serverTimestamp()
-                });
-            } catch (error) {
-                console.error("Error al enviar el mensaje:", error);
-                errorMessageDiv.textContent = "Error al enviar el mensaje. Intenta de nuevo.";
-                errorMessageDiv.classList.remove('hidden');
-            } finally {
-                sendButton.disabled = false;
-            }
-        });
-    </script>
+        </div>
+    </footer>
 </body>
 </html>
