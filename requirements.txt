@@ -1,2 +1,6 @@
 Flask
+Flask-SQLAlchemy
 gunicorn
+python-dotenv
+psycopg2-binary # Asegura compatibilidad con PostgreSQL en Render
+whitenoise
