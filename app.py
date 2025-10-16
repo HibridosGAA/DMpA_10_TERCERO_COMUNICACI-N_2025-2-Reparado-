@@ -85,12 +85,20 @@ def login():
             
     return render_template('login.html')
 
+@app.route('/welcome_message')
+def welcome_message():
+    """Muestra el mensaje de disculpa pública antes de proceder al login."""
+    # Si ya está logeado, lo mandamos directo a la elección de categoría
+    if session.get('logged_in'):
+        return redirect(url_for('elegir_categoria'))
+    return render_template('welcome.html')
+
 @app.route('/')
 def elegir_categoria():
     """Ruta inicial que permite al usuario elegir entre Hombres y Mujeres."""
-    # REDIRECCIONAR si el usuario no ha iniciado sesión
+    # REDIRECCIONAR si el usuario no ha iniciado sesión, ahora a la disculpa
     if not session.get('logged_in'):
-        return redirect(url_for('login'))
+        return redirect(url_for('welcome_message')) 
         
     return render_template('inicio.html') 
 
@@ -239,6 +247,7 @@ def init_db_command():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     with app.app_context():
+        # Llama a la inicialización de la DB al inicio
         init_db_command() 
         
     app.run(debug=True, host='0.0.0.0', port=port)
